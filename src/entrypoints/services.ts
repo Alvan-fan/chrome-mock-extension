@@ -15,6 +15,8 @@ const applyInterceptor = () => {
       method: request.method,
       headers: Object.fromEntries(request.headers.entries()),
     });
+    // const store = await getStore();
+    // console.log(store);
   });
 
   // 监听所有响应
@@ -24,6 +26,7 @@ const applyInterceptor = () => {
       status: response.status,
       statusText: response.statusText,
       headers: Object.fromEntries(response.headers.entries()),
+      body: response.body,
     });
   });
 };

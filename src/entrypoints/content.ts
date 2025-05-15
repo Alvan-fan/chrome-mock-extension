@@ -1,7 +1,4 @@
-const destroy = () => {
-  const script = document.getElementById('mockInterceptor');
-  script?.parentNode?.removeChild(script);
-};
+import { initStore, destroy } from '../utils/';
 
 export default defineContentScript({
   matches: ['<all_urls>'],
@@ -13,6 +10,8 @@ export default defineContentScript({
       s.id = 'mockInterceptor';
       s.src = chrome.runtime.getURL('services.js');
       (document.head || document.documentElement).appendChild(s);
+
+      initStore();
     } catch (error) {
       console.error('Failed to setup mock interceptor:', error);
     }
