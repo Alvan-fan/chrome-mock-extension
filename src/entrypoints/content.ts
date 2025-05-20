@@ -1,4 +1,22 @@
-import { initStore, destroy } from '../utils/';
+import { destroy } from '../utils';
+import { initStore, getStore } from '../utils/storage';
+import { listenMessage } from '../utils/message';
+
+listenMessage<any>('requestIntercepted', async (message) => {
+  try {
+    const store = await getStore();
+    sendMessage<any>('requestChecked', {
+      messageId: message.messageId,
+      headers: message.headers,
+      mock: store.mocks,
+    });
+  } catch (err) {
+    sendMessage<any>('requestChecked', {
+      messageId: message.messageId,
+      headers: {},
+    });
+  }
+});
 
 export default defineContentScript({
   matches: ['<all_urls>'],

@@ -1,79 +1,47 @@
+import { nanoid } from 'nanoid';
 import { BatchInterceptor } from '@mswjs/interceptors';
 import { FetchInterceptor } from '@mswjs/interceptors/fetch';
 import { XMLHttpRequestInterceptor } from '@mswjs/interceptors/XMLHttpRequest';
 
+import { MessageBus } from '@/utils/messageBus';
+import { sendMessage } from '@/utils/message';
+
+const messageBus = new MessageBus();
 const interceptor = new BatchInterceptor({
   name: 'mock',
   interceptors: [new FetchInterceptor(), new XMLHttpRequestInterceptor()],
 });
 
+const getRequestMocks = (url: string, method: string): Promise<any> => {
+  const messageId = nanoid();
+  const message = {
+    messageId,
+    url,
+    method,
+  };
+
+  sendMessage<any>('requestIntercepted', message);
+
+  return new Promise((resolve) => {
+    messageBus.addListener(message.messageId, resolve);
+  });
+};
+
 const applyInterceptor = () => {
   // 监听所有请求
   interceptor.on('request', async ({ request, controller }) => {
     console.log('Intercepted request:', request.url);
-
-    // 示例：拦截特定 URL 的请求
-    if (
-      request.url.includes(
-        'https://vue.ruoyi.vip/prod-api/system/user/list?pageNum=1&pageSize=10'
-      )
-    ) {
-      // 构造 mock 数据
-      const mockData = {
-        total: 2,
-        rows: [
-          {
-            createBy: 'admin',
-            createTime: '2024-06-30 11:27:11',
-            updateBy: null,
-            updateTime: null,
-            remark: '管理员',
-            userId: 1,
-            deptId: 103,
-            userName: 'admin',
-            nickName: '若依1111',
-            email: 'ry@163.com',
-            phonenumber: '15888888888',
-            sex: '1',
-            avatar: '',
-            password: null,
-            status: '0',
-            delFlag: '0',
-            loginIp: '115.222.228.104',
-            loginDate: '2025-05-16T12:21:05.000+08:00',
-            dept: {
-              createBy: null,
-              createTime: null,
-              updateBy: null,
-              updateTime: null,
-              remark: null,
-              deptId: 103,
-              parentId: null,
-              ancestors: null,
-              deptName: '研发部门',
-              orderNum: null,
-              leader: '若依',
-              phone: null,
-              email: null,
-              status: null,
-              delFlag: null,
-              parentName: null,
-              children: [],
-            },
-            roles: [],
-            roleIds: null,
-            postIds: null,
-            roleId: null,
-            admin: true,
-          },
-        ],
-        code: 200,
-        msg: '查询成功',
+    try {
+      const mocks = await getRequestMocks(request.url, request.method);
+      const { url, response: mockData } = mocks.mock[0] || {
+        url: '',
+        response: '',
       };
+      if (url === request.url) {
+        // 将 mockData 转换为 JSON 对象
+        const jsonMockData = parseMockData(mockData);
 
-      try {
-        // 直接返回 Response 对象
-        const response = new Response(JSON.stringify(mockData), {
+        const response = new Response(JSON.stringify(jsonMockData), {
           status: 200,
           statusText: 'OK',
           headers: {
@@ -82,10 +50,10 @@ const applyInterceptor = () => {
           },
         });
         controller.respondWith(response);
-      } catch (error) {
-        console.error('Error creating mock response:', error);
-        throw error;
       }
+    } catch (error) {
+      console.error('Error creating mock response:', error);
+      throw error;
     }
   });
 
@@ -102,6 +70,10 @@ const applyInterceptor = () => {
     }
   });
 };
+
+listenMessage<any>('requestChecked', (message) => {
+  messageBus.dispatch(message.messageId, message);
+});
 
 // 确保拦截器被正确应用
 try {
